@@ -4,6 +4,7 @@ Cryptography Assignment - Server Script
 ========================================
 This server manages multiple client connections and relays encrypted messages.
 The server does NOT handle encryption/decryption - that's done by the clients.
+Uses length-prefixed messages for reliable socket communication.
 """
 
 import socket
@@ -24,6 +25,42 @@ class CryptoServer:
     # Note: Server does not handle encryption/decryption
     # All encryption/decryption is handled by the clients
     # Server just relays encrypted messages between clients
+    
+    def send_message(self, client_socket, message):
+        """Send a message with length prefix for reliable transmission"""
+        try:
+            message_bytes = message.encode('utf-8')
+            message_length = len(message_bytes)
+            # Send 4-byte length prefix followed by the message
+            client_socket.send(message_length.to_bytes(4, byteorder='big'))
+            client_socket.send(message_bytes)
+        except Exception as e:
+            raise e
+    
+    def receive_message(self, client_socket):
+        """Receive a message with length prefix"""
+        try:
+            # First receive the 4-byte length prefix
+            length_bytes = b''
+            while len(length_bytes) < 4:
+                chunk = client_socket.recv(4 - len(length_bytes))
+                if not chunk:
+                    return None
+                length_bytes += chunk
+            
+            message_length = int.from_bytes(length_bytes, byteorder='big')
+            
+            # Now receive the actual message
+            message_bytes = b''
+            while len(message_bytes) < message_length:
+                chunk = client_socket.recv(message_length - len(message_bytes))
+                if not chunk:
+                    return None
+                message_bytes += chunk
+            
+            return message_bytes.decode('utf-8')
+        except Exception as e:
+            return None
         
     def broadcast_message(self, sender_socket, encrypted_message):
         """Broadcast an encrypted message to all connected clients except the sender"""
@@ -41,12 +78,12 @@ class CryptoServer:
             'timestamp': timestamp
         }
         
-        # Send to all clients except sender
+        # Send to all clients except sender using length-prefixed messages
         disconnected_clients = []
         for client_socket in self.clients:
             if client_socket != sender_socket:
                 try:
-                    client_socket.send(json.dumps(broadcast_data).encode('utf-8'))
+                    self.send_message(client_socket, json.dumps(broadcast_data))
                 except:
                     disconnected_clients.append(client_socket)
         
@@ -69,7 +106,7 @@ class CryptoServer:
         disconnected_clients = []
         for client_socket in self.clients:
             try:
-                client_socket.send(json.dumps(update_data).encode('utf-8'))
+                self.send_message(client_socket, json.dumps(update_data))
             except:
                 disconnected_clients.append(client_socket)
                 
@@ -80,8 +117,10 @@ class CryptoServer:
     def handle_client(self, client_socket, client_address):
         """Handle individual client connections"""
         try:
-            # Receive username
-            username_data = client_socket.recv(1024).decode('utf-8')
+            # Receive username using length-prefixed message
+            username_data = self.receive_message(client_socket)
+            if not username_data:
+                return
             username = json.loads(username_data)['username']
             
             # Store client info
@@ -99,7 +138,7 @@ class CryptoServer:
                 'key': self.current_key,
                 'server_info': 'Server relays encrypted messages - clients handle encryption/decryption'
             }
-            client_socket.send(json.dumps(welcome_data).encode('utf-8'))
+            self.send_message(client_socket, json.dumps(welcome_data))
             
             # Notify all clients about new user
             self.broadcast_user_update('joined', username)
@@ -107,7 +146,7 @@ class CryptoServer:
             # Handle messages from this client
             while self.running:
                 try:
-                    data = client_socket.recv(1024).decode('utf-8')
+                    data = self.receive_message(client_socket)
                     if not data:
                         break
                         
@@ -154,6 +193,7 @@ class CryptoServer:
             
             print(f"[SERVER] Crypto Server started on {self.host}:{self.port}")
             print(f"[SERVER] Encryption key for clients: {self.current_key}")
+            print(f"[SERVER] Using length-prefixed messages for reliable communication")
             print(f"[SERVER] Server relays encrypted messages (no server-side encryption)")
             print(f"[SERVER] Waiting for client connections...")
             print("-" * 60)
@@ -197,6 +237,7 @@ def main():
     """Main function to run the crypto server"""
     print("=== Cryptography Assignment - Server ===")
     print("Server relays encrypted messages between clients")
+    print("Uses length-prefixed messages for reliable socket communication")
     print("Students: Implement encrypt() and decrypt() functions in the CLIENT!")
     print()
     

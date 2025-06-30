@@ -4,6 +4,7 @@ Cryptography Assignment - Client Script
 =======================================
 This client connects to the crypto server and demonstrates symmetric key cryptography.
 Students should implement the encrypt() and decrypt() functions.
+Uses length-prefixed messages for reliable socket communication.
 
 The client:
 1. Encrypts messages before sending them to the server
@@ -23,6 +24,42 @@ class CryptoClient:
         self.username = ""
         self.encryption_key = ""
         self.running = False
+        
+    def send_message_to_server(self, message):
+        """Send a message with length prefix for reliable transmission"""
+        try:
+            message_bytes = message.encode('utf-8')
+            message_length = len(message_bytes)
+            # Send 4-byte length prefix followed by the message
+            self.socket.send(message_length.to_bytes(4, byteorder='big'))
+            self.socket.send(message_bytes)
+        except Exception as e:
+            raise e
+    
+    def receive_message_from_server(self):
+        """Receive a message with length prefix"""
+        try:
+            # First receive the 4-byte length prefix
+            length_bytes = b''
+            while len(length_bytes) < 4:
+                chunk = self.socket.recv(4 - len(length_bytes))
+                if not chunk:
+                    return None
+                length_bytes += chunk
+            
+            message_length = int.from_bytes(length_bytes, byteorder='big')
+            
+            # Now receive the actual message
+            message_bytes = b''
+            while len(message_bytes) < message_length:
+                chunk = self.socket.recv(message_length - len(message_bytes))
+                if not chunk:
+                    return None
+                message_bytes += chunk
+            
+            return message_bytes.decode('utf-8')
+        except Exception as e:
+            return None
         
     def encrypt(self, message, key):
         """
@@ -66,7 +103,7 @@ class CryptoClient:
         """Handle incoming messages from the server"""
         while self.running:
             try:
-                data = self.socket.recv(1024).decode('utf-8')
+                data = self.receive_message_from_server()
                 if not data:
                     break
                     
@@ -121,7 +158,7 @@ class CryptoClient:
                 'message': encrypted_message
             }
             
-            self.socket.send(json.dumps(message_data).encode('utf-8'))
+            self.send_message_to_server(json.dumps(message_data))
             print(f"📤 Message sent (encrypted): {encrypted_message}")
             
         except Exception as e:
@@ -135,7 +172,7 @@ class CryptoClient:
             
             # Send username to server
             username_data = {'username': self.username}
-            self.socket.send(json.dumps(username_data).encode('utf-8'))
+            self.send_message_to_server(json.dumps(username_data))
             
             self.running = True
             
@@ -231,6 +268,7 @@ def main():
     """Main function to run the crypto client"""
     print("=== Cryptography Assignment - Client ===")
     print("Students: Implement the encrypt() and decrypt() functions!")
+    print("Uses length-prefixed messages for reliable socket communication")
     print("The client encrypts outgoing messages and decrypts incoming messages.")
     print()
     
