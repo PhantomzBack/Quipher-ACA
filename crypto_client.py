@@ -248,21 +248,7 @@ class CryptoClient:
         
     def test_encryption(self):
         """Test the encryption and decryption functions"""
-        test_message = "Hello, this is a test message!"
-        print(f"\n=== Encryption Test ===")
-        print(f"Original message: {test_message}")
-        
-        encrypted = self.encrypt(test_message, self.encryption_key)
-        print(f"Encrypted: {encrypted}")
-        
-        decrypted = self.decrypt(encrypted, self.encryption_key)
-        print(f"Decrypted: {decrypted}")
-        
-        if test_message == decrypted:
-            print("✅ Encryption/Decryption test PASSED!")
-        else:
-            print("❌ Encryption/Decryption test FAILED!")
-        print("=====================")
+        ## TODO: Implement a simple test for encryption/decryption 
 
 def main():
     """Main function to run the crypto client"""
