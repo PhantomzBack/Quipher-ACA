@@ -27,17 +27,6 @@ This assignment demonstrates symmetric key cryptography using Python socket prog
 ### Step 2: Implement Encryption Functions
 You need to implement the following functions in **BOTH** files:
 
-#### In crypto_server.py:
-```python
-def encrypt(self, message, key):
-    # Your encryption implementation here
-    pass
-
-def decrypt(self, encrypted_message, key):
-    # Your decryption implementation here
-    pass
-```
-
 #### In crypto_client.py:
 ```python
 def encrypt(self, message, key):
